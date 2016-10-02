@@ -1,0 +1,150 @@
+#####Project:     Google Merchandise Store Analysis
+#####Dates:       August 1, 2015 - July 31, 2016
+#####2 Data points where removed (not included) because the data was bad (zeros for most categories)
+
+
+#####Preliminary Analysis
+revXEcomCleanV2 <- read.csv("~/Google Drive/Analysis/Google Merchandise Store/revXEcomCleanV2.csv")
+View(revXEcomCleanV2)
+Train <- subset(revXEcomCleanV2, RandID <=100)
+Test <- subset(revXEcomCleanV2, RandID >=264)
+
+library(Hmisc)
+describe(Train)
+
+#####Taking out outlies to see effects
+#####Testing for R2 Imp from Last Dataset - Rounding
+B2DRTrnNoO <- subset(Train, B2DR < 10)
+B2DRNoOut <- lm(B2DRTrnNoO$prodRev~B2DRTrnNoO$B2DR)
+plot(B2DRTrnNoO$B2DR, B2DRTrnNoO$prodRev, main="B2DR No Out")
+abline(B2DRNoOut)
+summary(B2DRNoOut)
+
+
+#####Checking for correlations
+library(corrplot)
+M <- cor(Train)
+corrplot(M, method = "ellipse")
+
+
+
+################Histograms
+hist(Train$uniqPur, main = "Train Hisogram")
+hist(Train$avrOrdVal, main = "Train Hisogram")
+chart.Histogram(Train$avrQTY, main="Train avrQTY Histogram - Outliers=No", show.outliers = FALSE, xlim=c(0,7))
+hist(Train$prodRev, main = "Training Product Revenue Histogram")
+library(Hmisc)
+describe(Train)
+
+library(PerformanceAnalytics)
+hist(Train$B2DR, main = "Train Hisogram", breaks = c(0,0.05,.1,.15,.2,.25,.3,.35,.4,.45,.5,8), xlim=c(0,.5))
+chart.Histogram(Train$avrQTY, main="Train avrQTY Histogram - Outliers=No", show.outliers = FALSE, xlim=c(0,7))
+
+
+#################Boxplots
+boxplot(Train$avrQTY, main="Train avrQTY")
+
+######Variable Selection
+library(leaps)
+SSMod <- regsubsets(prodRev~date1900+uniqPur+quant+avrPri+avrQTY+avrOrdVal+C2DR+B2DR+prodCart+prodDetView+trans+ecomm+sess, data=Train, nvmax=10)
+summary(SSMod)
+
+######Best 2 pair model
+prXUpAov <- lm(Train$prodRev ~ Train$uniqPur+Train$avrOrdVal)
+plot(Train$uniqPur, Train$prodRev, main = "Training")
+plot(Train$avrOrdVal, Train$prodRev, main = "Training")
+summary(prXUpAov)
+
+######Best 3 pair model
+prX3M <- lm(Train$prodRev ~ Train$uniqPur+Train$avrOrdVal+Train$quant)
+plot(Train$uniqPur, Train$prodRev, main = "Training")
+plot(Train$avrOrdVal, Train$prodRev, main = "Training")
+summary(prX3M)
+
+######Best 4 pair model
+prX4M <- lm(Train$prodRev ~ Train$avrQTY+Train$avrOrdVal+Train$trans+Train$quant)
+summary(prX4M)
+
+
+######Best 5 pair model
+prX5M <- lm(Train$prodRev ~ Train$uniqPur+Train$quant+Train$avrQTY+Train$avrOrdVal+Train$trans)
+summary(prX5M)
+
+######Best 6 pair model
+prX6M <- lm(Train$prodRev ~ Train$uniqPur+Train$quant+Train$avrPri+Train$avrQTY+Train$avrOrdVal+Train$trans)
+summary(prX6M)
+
+
+#######Best 10 pair Model
+prX10M <- lm(Train$prodRev ~ Train$uniqPur + Train$quant + Train$avrPri + Train$avrQTY + Train$avrOrdVal + Train$C2DR + Train$prodCart + Train$trans + Train$ecomm + Train$sess)
+summary(prX10M)
+
+##########################################
+#####Test Data (Not Training Data)
+prX3MTest <- lm(Test$prodRev ~ Test$uniqPur+Test$avrOrdVal+Test$quant)
+summary(prX3MTest)
+########################################
+
+
+
+#################ZData Models
+##################Scale 3 scores
+library(psych)
+library(relaimpo)
+TrainScl <- scale(Train)
+ZData<-data.frame(TrainScl)
+
+
+ZModel1 <-lm(prodRev~uniqPur, data=ZData)
+summary(ZModel1)
+
+
+ZModel2 <-lm(prodRev~uniqPur+avrOrdVal, data=ZData)
+summary(ZModel2)
+
+
+ZModel3 <-lm(prodRev~uniqPur+avrOrdVal+quant, data=ZData)
+summary(ZModel3)
+
+ZModel4 <-lm(prodRev~uniqPur+avrOrdVal+quant+avrQTY, data=ZData)
+summary(ZModel4)
+
+
+########VIF Analysis
+VIF(lm(Train$InitID~Train$prodCart))
+VIF(lm(Train$prodRev~Train$RandID))
+VIF(lm(Train$prodRev~Train$uniqPur))
+VIF(lm(Train$prodRev~Train$quant))
+VIF(lm(Train$prodCart~Train$uniqPur))
+VIF(lm(Train$quant~Train$avrQTY))
+
+
+
+######Outlier Remove
+C2DRTrnNoO <- subset(Train, C2DR < 1)
+
+B2DRTrnNoO <- subset(Train, B2DR < .1)
+B2DRNoOut <- lm(B2DRTrnNoO$prodRev~B2DRTrnNoO$B2DR)
+plot(B2DRTrnNoO$B2DR, B2DRTrnNoO$prodRev, main="B2DR No Out")
+abline(B2DRNoOut)
+summary(B2DRNoOut)
+
+
+######Picking a subset
+library(leaps)
+SSMod <- regsubsets(prodRev~date1900+uniqPur+quant+avrPri+avrQTY+avrOrdVal+C2DR+B2DR+prodCart, data=Train, nvmax=6)
+summary(SSMod)
+
+pRXUP <- lm(Train$prodRev~Train$uniqPur)
+summary(pRXUP)
+anova(pRXUP)
+
+plot(pRXUP, main="Train")
+
+plot(Train$uniqPur, Train$prodRev)
+abline(pRXUP)
+
+
+#########Ind Random Number to See R Squared
+RandID <- lm(B2DRTrnNoO$uniqPur~B2DRTrnNoO$RandID)
+summary(RandID)
